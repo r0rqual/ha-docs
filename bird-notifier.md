@@ -246,11 +246,3 @@ on_value:
 }
 ```
 
-## Troubleshooting
-
-| Issue | Check |
-|-------|-------|
-| No audio | `arecord -D hw:0,0 -f S32_LE -r 16000 -c 2 -d 5 test.wav` |
-| RTSP won't connect | Firewall port 8554, MediaMTX logs |
-| No MQTT messages | BirdNET-Pi logs, Mosquitto running, confidence threshold |
-| SQL sensor empty | Database path, entity_id matches, attributes exist |
