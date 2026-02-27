@@ -5,7 +5,7 @@ Automated bird identification using a Pi Zero 2 W, BirdNET ML, and Home Assistan
 ## Architecture
 
 ```
-┌─────────────────┐    RTSP     ┌─────────────────┐    MQTT    ┌─────────────┐
+┌─────────────────┐    RTSP    ┌─────────────────┐    MQTT    ┌─────────────┐
 │ Pi Zero 2 W     │───────────▶│ BirdNET-Pi      │───────────▶│ Home        │
 │ + ReSpeaker HAT │   audio    │ (HA add-on)     │ detections │ Assistant   │
 └─────────────────┘            └─────────────────┘            └─────────────┘
