@@ -190,7 +190,7 @@ sensor:
           {% endif %}
         bird_2_name: "..."
         bird_2_ago: "..."
-        # repeat for bird_3, bird_4
+        # repeat for bird_3 through bird_6
 ```
 
 ## 4. ESP32 Display (Optional)
@@ -207,19 +207,20 @@ Two bird pages in the ESPHome config:
 ```yaml
 - id: bird_page
   lambda: |-
-    it.printf(160, 40, id(font_large), TextAlign::CENTER, "Now Singing");
+    it.printf(160, 40, id(font_large), TextAlign::CENTER, "Bird Detected");
     it.printf(160, 100, id(font_medium), TextAlign::CENTER, "%s",
       id(birdnet_detection).state.c_str());
 ```
 
-**bird_idle_page** — Recent species list:
+**bird_idle_page** — Recent species list (6 birds):
 ```yaml
 - id: bird_idle_page
   lambda: |-
     it.printf(160, 20, id(font_large), TextAlign::CENTER, "Recent Birds");
-    it.printf(20, 60, id(font_small), "%s", id(bird_1_name).state.c_str());
-    it.printf(300, 60, id(font_small), TextAlign::RIGHT, "%s", id(bird_1_ago).state.c_str());
-    // repeat for birds 2-4
+    // 6 birds with 28px spacing
+    it.printf(20, 55, id(font_small), "%s", id(bird_1_name).state.c_str());
+    it.printf(300, 55, id(font_small), TextAlign::RIGHT, "%s", id(bird_1_ago).state.c_str());
+    // repeat for birds 2-6
 ```
 
 ### Auto-Display on Detection
@@ -245,4 +246,109 @@ on_value:
   "FlickrImage": "https://live.staticflickr.com/..."
 }
 ```
+
+## 5. Rare Bird Alerts
+
+Audio announcement via Alexa when a rare bird is detected. "Rare" means < 5% eBird checklist frequency for the current week in Dane County, WI.
+
+### Architecture
+
+```
+eBird Bar Chart (manual download) → Python parser → JSON file
+                                                         ↓
+BirdNET MQTT → sensor.birdnet_latest_detection → Automation → Alexa Announce
+                                                    ↓
+                                              Frequency lookup
+```
+
+### Data Setup
+
+1. **Download eBird bar chart** (requires login):
+   - Go to https://ebird.org/barchart?r=US-WI-025
+   - Click "Download Histogram Data" at bottom
+   - Save to `~/src/homeassistant-local/`
+
+2. **Download eBird taxonomy** (one-time):
+   ```bash
+   curl -o eBird_taxonomy_v2025.csv \
+     "https://www.birds.cornell.edu/clementschecklist/wp-content/uploads/2025/10/eBird_taxonomy_v2025.csv"
+   ```
+
+3. **Run parser**:
+   ```bash
+   python3 parse_ebird_barchart.py \
+     ebird_US-WI-025__1900_2026_1_12_barchart.txt \
+     eBird_taxonomy_v2025.csv \
+     dane_county_frequencies.json
+   ```
+
+4. **Copy to HA**:
+   ```bash
+   cp dane_county_frequencies.json /Volumes/config/
+   ```
+
+### Home Assistant Configuration
+
+**Shell Command & Sensor** (`configuration.yaml`):
+```yaml
+command_line:
+  - sensor:
+      name: "Bird Rarity Check"
+      unique_id: bird_rarity_check
+      command: "cat /config/.last_bird_code 2>/dev/null | xargs -I{} python3 /config/scripts/check_rare_bird.py {} || echo 1.0"
+      scan_interval: 86400
+      value_template: "{{ value | float(1.0) }}"
+
+shell_command:
+  set_bird_code: "/bin/bash -c 'echo {{ species_code }} > /config/.last_bird_code'"
+```
+
+**Rarity Script** (`scripts/check_rare_bird.py`):
+- Reads `/config/dane_county_frequencies.json`
+- Calculates week index (0-47) from current date
+- Outputs frequency (0.0-1.0), exit 0 if rare, 1 if common
+
+**Toggle** (`input_booleans.yaml`):
+```yaml
+rare_bird_alerts_enabled:
+  name: Rare Bird Alerts
+  icon: mdi:bird
+```
+
+**Automation** (`automations.yaml`):
+- Triggers on `sensor.birdnet_latest_detection` state change
+- Conditions: alerts enabled, confidence ≥ 70%
+- Writes species code via `shell_command.set_bird_code`
+- Updates `sensor.bird_rarity_check`
+- If frequency < 0.05, calls `notify.alexa_media_kitchen_echo_dot`
+
+### Week Index Calculation
+
+eBird uses 4 periods per month (48 total):
+```
+week_index = (month - 1) * 4 + min((day - 1) // 7, 3)
+```
+
+| Month | Week Indices |
+|-------|--------------|
+| January | 0, 1, 2, 3 |
+| February | 4, 5, 6, 7 |
+| ... | ... |
+| December | 44, 45, 46, 47 |
+
+### Testing
+
+```yaml
+# Simulate rare bird in Developer Tools → Actions
+action: mqtt.publish
+data:
+  topic: birdnet
+  payload: '{"CommonName":"Snowy Owl","ScientificName":"Bubo scandiacus","Confidence":0.85,"SpeciesCode":"snoowl1","Date":"2026-03-01","Time":"12:00:00"}'
+```
+
+### Maintenance
+
+- **Annual:** Re-download eBird bar chart in January and re-run parser
+- **Threshold:** Adjust 0.05 (5%) in automation if too many/few alerts
+- **Taxonomy:** Update CSV if species aren't matching (eBird releases new taxonomy each fall)
 
