@@ -6,6 +6,11 @@
 - `ha-design.md` - Detailed design docs, implementation checklists
 - `bird-notifier.md` - BirdNET pipeline setup and configuration
 
+## Git Conventions
+- Don't override the git author - use the repo owner's configured identity
+- Keep commit messages short and simple (one line, ~50 chars)
+- No verbose bullet lists or multi-paragraph commit messages
+
 ## Overview
 This is the Home Assistant configuration for a residential smart home in Wisconsin. The HA instance runs on a local server and is accessible at `http://homeassistant:8123`.
 
