@@ -87,6 +87,21 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] `septic_pump_alarm_alert` automation - Critical mobile notification on alarm
 - [x] Bypasses Do Not Disturb on iOS
 
+### Doorbell Notifications
+- [x] Nest Doorbell (Front Door) - `event.front_door_chime`
+- [x] `doorbell_chime_announcement` automation - Plays chime + voice announcement
+- [x] Volume control - Saves/restores Echo Dot volume (boosts to 80% for doorbell)
+- [x] SSML audio - Alexa doorbell sound from sound library
+- [x] Mode: restart (handles Nest's built-in cooldown period)
+
+### Rare Bird Alerts
+- [x] eBird frequency data integration - 521 species, 48 weekly values
+- [x] `rare_bird_tts_alert` automation - Announces and notifies for rare birds (< 5% frequency)
+- [x] TTS announcement via Kitchen Echo Dot
+- [x] Mobile push notification with bird name and confidence %
+- [x] Toggle with `input_boolean.rare_bird_alerts_enabled`
+- [x] Minimum 70% confidence threshold to reduce false positives
+
 ---
 
 ## Planned Enhancements
@@ -174,24 +189,22 @@ Cool Night   -  74  +
 - Bird detection interrupts any page, shows bird_page for 30s, returns to previous
 - ESPHome must have "Allow device to make Home Assistant service calls" enabled for buttons
 
-### 2. TTS Announcements for Rare Birds (Deferred)
+### 2. TTS Announcements for Rare Birds
 
-**Challenge:** Bird rarity is seasonal in Wisconsin:
-- Warblers are rare most of year but common during spring/fall migration
-- Some species are year-round residents vs seasonal visitors
-- A simple "not seen recently" check doesn't capture true rarity
+**Status:** ✅ Implemented
 
-**Potential Solutions:**
-- eBird API integration for regional frequency data (complex)
-- Seasonal rare species lists (maintenance burden)
-- Machine learning on local detection history (overkill)
+**Solution:** eBird bar chart integration for Dane County (US-WI-025)
+- 521 species with 48 weekly frequency values (0.0-1.0)
+- Rarity threshold: < 5% weekly frequency
+- Data source: Manual download from https://ebird.org/barchart?r=US-WI-025
+- Annual maintenance required (re-download in January)
 
-**Current Status:** Deferred until a practical rarity data source is identified.
-
-**When Implemented:**
+**Implementation:**
 - Trigger: High confidence detection (≥70%)
-- Condition: Species is seasonally rare for current date
-- Action: TTS announcement via ESP32 speaker (Piper TTS)
+- Condition: Species weekly frequency < 5%
+- Actions:
+  - TTS announcement via Kitchen Echo Dot
+  - Mobile push notification with bird name and confidence %
 
 ### 3. Font Improvements
 
@@ -268,6 +281,12 @@ BigBobbas package uses limited MDI icon font. Missing icons for:
 |--------|---------|
 | `binary_sensor.vibrationsensor1_vibration_sensor` | ESPHome vibration sensor on septic alarm |
 
+### Doorbell
+| Entity | Purpose |
+|--------|---------|
+| `event.front_door_chime` | Nest Doorbell chime event (fires on button press) |
+| `media_player.kitchen_echo_dot` | Echo Dot for doorbell chime/announcement |
+
 ---
 
 ## Implementation Checklist
@@ -312,7 +331,7 @@ BigBobbas package uses limited MDI icon font. Missing icons for:
 | `/Volumes/config/configuration.yaml` | SQL sensor for bird history, python_script integration |
 | `/Volumes/config/input_numbers.yaml` | hvac_hold_temp added |
 | `/Volumes/config/input_booleans.yaml` | rare_bird_alerts_enabled toggle |
-| `/Volumes/config/automations.yaml` | Hold system, rare bird TTS alert, septic alarm |
+| `/Volumes/config/automations.yaml` | Hold system, rare bird TTS alert, septic alarm, doorbell chime |
 | `/Volumes/config/esphome/vibration-sensor.yaml` | ESP32 vibration sensor for septic alarm |
 | `/Volumes/config/dane_county_frequencies.json` | eBird frequency data (521 species, 48 weeks) |
 | `/Volumes/config/scripts/check_rare_bird.py` | Rare bird rarity check script |

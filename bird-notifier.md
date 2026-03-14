@@ -249,7 +249,7 @@ on_value:
 
 ## 5. Rare Bird Alerts
 
-Audio announcement via Alexa when a rare bird is detected. "Rare" means < 5% eBird checklist frequency for the current week in Dane County, WI.
+Audio announcement via Alexa and mobile push notification when a rare bird is detected. "Rare" means < 5% eBird checklist frequency for the current week in Dane County, WI.
 
 ### Architecture
 
@@ -291,8 +291,8 @@ Audio announcement via Alexa when a rare bird is detected. "Rare" means < 5% eBi
 │                              ▼                                               │
 │                       ┌─────────────┐      ┌─────────────┐                   │
 │                       │ If freq     │ yes  │ Alexa       │                   │
-│                       │ < 5%?       │─────▶│ Announce    │                   │
-│                       └─────────────┘      │ "Rare bird!"│                   │
+│                       │ < 5%?       │─────▶│ Announce +  │                   │
+│                       └─────────────┘      │ Mobile Push │                   │
 │                                            └─────────────┘                   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -356,7 +356,9 @@ rare_bird_alerts_enabled:
 - Conditions: alerts enabled, confidence ≥ 70%
 - Writes species code via `shell_command.set_bird_code`
 - Updates `sensor.bird_rarity_check`
-- If frequency < 0.05, calls `notify.alexa_media_kitchen_echo_dot`
+- If frequency < 0.05:
+  - Calls `notify.alexa_media_kitchen_echo_dot` for voice announcement
+  - Sends `notify.mobile_app_lucas_iphone` with bird name and confidence %
 
 ### Week Index Calculation
 

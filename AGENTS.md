@@ -1,9 +1,11 @@
 # Home Assistant Configuration
 
 ## Documentation
-**Keep these files in sync when making changes:**
-- `AGENTS.md` / `CLAUDE.md` - Quick reference for AI assistants
+**File structure:**
+- `AGENTS.md` (this file) - Quick reference for AI assistants
+  - `CLAUDE.md` → symlink to AGENTS.md
 - `ha-design.md` - Detailed design docs, implementation checklists
+  - `README.md` → symlink to ha-design.md
 - `bird-notifier.md` - BirdNET pipeline setup and configuration
 
 ## Git Conventions
@@ -148,6 +150,25 @@ Sends critical mobile notification when vibration sensor detects septic pump ala
 - Critical alert (bypasses Do Not Disturb on iOS)
 - Mode: single (prevents spam during continuous alarm)
 
+### Doorbell Chime and Announcement (`automation.doorbell_chime_announcement`)
+**Status:** Enabled
+
+Plays loud doorbell chime and announces when Nest doorbell is pressed.
+
+**Setup:**
+- Nest Doorbell (Front Door) - `event.front_door_chime`
+- Kitchen Echo Dot for audio output
+
+**Actions:**
+1. Saves current Echo Dot volume
+2. Sets volume to 80% for audibility
+3. Plays doorbell chime sound + announces "Someone is at the door!"
+4. Restores original volume after 5 seconds
+
+**Mode:** restart (interrupts in-progress announcements for new doorbell presses)
+
+**Note:** Nest enforces a cooldown period (~30-60 seconds) between doorbell events to prevent spam. Rapid successive presses won't trigger multiple announcements.
+
 ## Day/Night Schedule
 - **Day:** 6am - 11pm (hour 6-22)
 - **Night:** 11pm - 6am (hour 23-5)
@@ -209,23 +230,28 @@ Sends critical mobile notification when vibration sensor detects septic pump ala
 ### Rare Bird Alerts (`automation.rare_bird_tts_alert`)
 **Status:** Enabled
 
-Announces via Alexa when BirdNET detects a rare bird (< 5% eBird frequency for current week).
+Announces via Alexa and sends mobile notification when BirdNET detects a rare bird (< 5% eBird frequency for current week).
 
 **How it works:**
 1. BirdNET detection triggers automation
 2. Looks up `SpeciesCode` in `sensor.ebird_dane_county_frequencies` for current week (0-47)
-3. If frequency < 5% and confidence ≥ 70%, announces via Kitchen Echo Dot
+3. If frequency < 5% and confidence ≥ 70%:
+   - Announces via Kitchen Echo Dot
+   - Sends push notification to iPhone with bird name and confidence %
 4. Toggle with `input_boolean.rare_bird_alerts_enabled`
 
 **Data source:** eBird bar chart for Dane County (US-WI-025)
 - Frequency JSON: `/config/dane_county_frequencies.json` (521 species)
 - Rarity script: `/config/scripts/check_rare_bird.py` (returns frequency for species)
 - Parser script: `~/src/homeassistant-local/parse_ebird_barchart.py`
+- Taxonomy: `~/src/homeassistant-local/eBird_taxonomy_v2025.csv`
 
 **Implementation:**
 - `shell_command.set_bird_code` writes species code to `/config/.last_bird_code`
 - `sensor.bird_rarity_check` runs Python script, returns frequency (0.0-1.0)
 - Automation triggers notification if frequency < 0.05
+
+**Week index calculation:** `(month - 1) * 4 + min((day - 1) // 7, 3)`
 
 **Annual maintenance:** Re-download eBird bar chart in January from https://ebird.org/barchart?r=US-WI-025 and re-run parser
 
