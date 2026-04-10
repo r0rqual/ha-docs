@@ -84,7 +84,7 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 ## Automations
 
 ### Smart HVAC v2 (`automation.smart_hvac_v2`)
-**Status:** DISABLED (awaiting testing)
+**Status:** Enabled and running
 
 Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 

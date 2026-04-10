@@ -43,7 +43,7 @@ This document tracks current state, planned enhancements, and implementation det
 
 ---
 
-## Current State (Completed)
+## Current State
 
 ### Smart HVAC v2
 - [x] Core automation with outdoor temp-based mode selection
@@ -56,7 +56,7 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Summer night fan circulation automation
 - [x] ERV control based on outdoor conditions
 
-**Status:** Automation implemented, awaiting final testing/enable
+**Status:** Enabled and running
 
 ### BirdNET Pipeline
 - [x] Pi Zero 2 W audio capture via ReSpeaker HAT
@@ -71,10 +71,28 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] `sensor.recent_birds_display` - Parsed attributes with relative times
   - `bird_1_name`, `bird_1_ago` through `bird_6_name`, `bird_6_ago`
 
-### ESP32-S3-BOX-3B (Current)
+### ESP32-S3-BOX-3B
 - [x] BigBobbas custom ESPHome package
 - [x] 6 swipeable pages with touch controls
 - [x] Static IP: 192.168.50.189
+
+**Display Pages (6 Total):**
+
+| Index | Name | Content | Navigation |
+|-------|------|---------|------------|
+| 0 | `bird_idle_page` | Recent Birds list (6 species + times) | Default/home page |
+| 1 | `setpoints_page` | 4 HVAC temp controls with +/- | Swipe from birds |
+| 2 | `override_page` | Temperature hold with temp/duration +/- | Swipe from setpoints |
+| 3 | `forecast_page` | 3-day weather outlook | Swipe from forecast |
+| 4 | `energy_page` | Current usage & solar production | Swipe from forecast |
+| N/A | `bird_page` | "Bird Detected" - new detection alert | Auto-shows 30s, returns to previous |
+
+**Navigation:**
+- Tap right edge: next page (birds → setpoints → hold → forecast → energy → birds)
+- Tap left edge: previous page
+- Bird detection interrupts any page, shows bird_page for 30s, returns to previous
+- Enlarged touch zones (60×45px setpoints, 80×50px hold) for reliable button presses
+- ESPHome must have "Allow device to make Home Assistant service calls" enabled
 
 ### Temperature Hold System
 - [x] `input_number.hvac_hold_temp` - Target temp during hold (60-85°F)
@@ -101,141 +119,6 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Mobile push notification with bird name and confidence %
 - [x] Toggle with `input_boolean.rare_bird_alerts_enabled`
 - [x] Minimum 70% confidence threshold to reduce false positives
-
----
-
-## Planned Enhancements
-
-### 1. ESP32 Display Pages (6 Total)
-
-| Index | Name | Content | Navigation |
-|-------|------|---------|------------|
-| 0 | `bird_idle_page` | Recent Birds list (6 species + times) | Default/home page |
-| 1 | `setpoints_page` | 4 HVAC temp controls with +/- | Swipe from birds |
-| 2 | `override_page` | Temperature hold with temp/duration +/- | Swipe from setpoints |
-| 3 | `forecast_page` | 3-day weather outlook | Swipe from hold |
-| 4 | `energy_page` | Current usage & solar production | Swipe from forecast |
-| N/A | `bird_page` | "Bird Detected" - new detection alert | Auto-shows 30s, returns to previous |
-
-#### Page Details
-
-**bird_idle_page** (Recent Birds)
-```
-      Recent Birds
-─────────────────────────
-American Crow           2h
-American Goldfinch     22h
-Dark-eyed Junco        23h
-Blue Jay                1d
-Northern Cardinal       2d
-House Sparrow           3d
-```
-- 28px line spacing to fit 6 birds
-- Bird name uses smaller font (my_font3) for long species names
-
-**energy_page**
-```
-       Energy
-─────────────────────────
-  ⚡ Using    1,234 W
-  ☀️ Solar    2,100 W
-─────────────────────────
-  Net: Exporting 866 W
-```
-- Sensors: `sensor.sense_197666_energy`, `sensor.sense_197666_production`
-
-**forecast_page**
-```
-      Forecast
-─────────────────────────
-Today  32/18  Snowy
-Tue    28/15  Cloudy
-Wed    35/22  Partly Cloudy
-```
-- Source: `sensor.forecast_display` (trigger-based, uses `weather.get_forecasts` service)
-- Compact layout: day name at x=25, temps at x=100, condition at x=175 (left-aligned, 18 chars)
-
-**setpoints_page**
-```
-    Comfort Targets
-─────────────────────────
-Heat Day     -  72  +
-Heat Night   -  70  +
-Cool Day     -  76  +
-Cool Night   -  74  +
-```
-- Touch +/- buttons adjust `input_number.comfort_*` entities
-- Step: 1°F per tap
-- Enlarged touch zones (60×45px) and larger button font (my_font3) for reliability
-
-**override_page** (Temperature Hold)
-```
-    Temperature Hold
-─────────────────────────
-   -       72 F       +
-   -       4 hr       +
-     [ START HOLD ]
-       [ Auto ON ]
-```
-- Top row: Hold temperature +/- (`input_number.hvac_hold_temp`)
-- Second row: Duration +/- (`input_number.hvac_override_duration`)
-- START/STOP HOLD button toggles `input_boolean.hvac_override_enabled`
-- Auto ON/OFF button enables/disables `automation.smart_hvac_v2`
-- Enlarged touch zones (80×50px for +/-, 200×45px for buttons)
-
-#### Swipe Navigation
-- Tap right edge: next page (birds → setpoints → hold → forecast → energy → birds)
-- Tap left edge: previous page
-- Bird detection interrupts any page, shows bird_page for 30s, returns to previous
-- ESPHome must have "Allow device to make Home Assistant service calls" enabled for buttons
-
-### 2. TTS Announcements for Rare Birds
-
-**Status:** ✅ Implemented
-
-**Solution:** eBird bar chart integration for Dane County (US-WI-025)
-- 521 species with 48 weekly frequency values (0.0-1.0)
-- Rarity threshold: < 5% weekly frequency
-- Data source: Manual download from https://ebird.org/barchart?r=US-WI-025
-- Annual maintenance required (re-download in January)
-
-**Implementation:**
-- Trigger: High confidence detection (≥70%)
-- Condition: Species weekly frequency < 5%
-- Actions:
-  - TTS announcement via Kitchen Echo Dot
-  - Mobile push notification with bird name and confidence %
-
-### 3. Font Improvements
-
-**Current Limitation:**
-BigBobbas package uses limited MDI icon font. Missing icons for:
-- Bird (`\U000F0917`)
-- Weather conditions
-- Temperature/thermometer
-- Solar/energy
-
-**Options to Explore:**
-
-| Option | Pros | Cons |
-|--------|------|------|
-| **A. Custom font file** | Full MDI icon set | Larger firmware, complex setup |
-| **B. Material Symbols** | Modern icons, variable weight | Different codepoints than MDI |
-| **C. PNG/bitmap icons** | Exact icons wanted | Uses more memory, static size |
-| **D. Text substitutes** | No changes needed | Less visual appeal |
-
-**Recommended Approach:**
-1. Start with text substitutes (current)
-2. Create custom font with just needed icons (~20 glyphs):
-   - Bird, thermometer, sun, cloud, snow, rain
-   - Plus, minus, power, home
-   - Lightning bolt (energy)
-3. Use ESPHome `font:` with `glyphs:` to subset
-
-**Font Resources:**
-- MDI icons: https://pictogrammers.com/library/mdi/
-- ESPHome font docs: https://esphome.io/components/font.html
-- Google Fonts (for text): Roboto, Inter, or system fonts
 
 ---
 
@@ -289,36 +172,9 @@ BigBobbas package uses limited MDI icon font. Missing icons for:
 
 ---
 
-## Implementation Checklist
-
-### Phase 1: Core Display Pages ✓
-- [x] Bird history SQL sensor
-- [x] Recent birds template sensor (6 birds)
-- [x] Update bird_idle_page with 6-bird list (28px spacing)
-- [x] Add energy_page (usage vs solar, net import/export)
-- [x] Add forecast_page (3-day outlook, compact layout)
-- [x] Add forecast_display trigger-based template sensor
-- [x] Implement swipe navigation (tap left/right edges)
-- [x] Reorder pages: birds → setpoints → hold → forecast → energy
-
-### Phase 2: HVAC Controls ✓
-- [x] Add setpoints_page with touch +/-
-- [x] Add override_page (hold) with temp/duration controls
-- [x] Create hold automations (set temp, auto-clear timer)
-- [x] Enlarge touch zones on setpoints and hold pages (60×45px buttons)
-- [x] Use larger font (my_font3) for buttons
-- [x] Deploy ESPHome update & test touch responsiveness
-
-### Phase 3: TTS & Polish ✓
-- [x] Create rare bird TTS automation (uses eBird seasonal frequency data)
-- [x] Rare bird alerts via Alexa (ESP32 TTS had format issues)
-- [ ] Explore custom font options
-- [ ] Add icons to pages
-
-### Phase 4: Future Ideas
-- [ ] Daily species summary notification
-- [ ] Seasonal tracking dashboard
-- [x] eBird integration for rarity data (REST sensor + 521 species frequency JSON)
+## Future Ideas
+- Daily species summary notification
+- Seasonal tracking dashboard
 
 ---
 
