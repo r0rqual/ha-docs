@@ -47,7 +47,7 @@ This document tracks current state, planned enhancements, and implementation det
 
 ### Smart HVAC v2
 - [x] Core automation with outdoor temp-based mode selection
-- [x] Hysteresis to prevent mode thrashing (heat <55°F exit 58°F, cool >72°F exit 69°F)
+- [x] Hysteresis to prevent mode thrashing (heat exits at 58°F or indoor > cool target; cool exits at 69°F or indoor < heat target)
 - [x] Day/night comfort targets via input_number helpers
 - [x] Humidity-aware target adjustments (+1°F heat if dry, -1.5 to -2.5°F cool if humid)
 - [x] Forecast-based preconditioning (precool morning if hot afternoon, skip-heat if warming)

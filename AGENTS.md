@@ -89,8 +89,8 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 
 **Core Logic:**
-- Outdoor < 55°F → HEAT mode (exits at 58°F if currently heating)
-- Outdoor > 72°F → COOL mode (exits at 69°F if currently cooling)
+- Outdoor < 55°F → HEAT mode (exits at 58°F, or sooner if indoor exceeds cool target)
+- Outdoor > 72°F → COOL mode (exits at 69°F, or sooner if indoor drops below heat target)
 - 55-72°F (Shoulder) → Heat/cool based on indoor temp, or OFF if comfortable
 
 **Preconditioning (uses NWS forecast):**
