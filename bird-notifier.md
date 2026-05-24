@@ -390,3 +390,98 @@ data:
 - **Threshold:** Adjust 0.05 (5%) in automation if too many/few alerts
 - **Taxonomy:** Update CSV if species aren't matching (eBird releases new taxonomy each fall)
 
+## 6. Pi Networking
+
+The Pi Zero sits on the second floor southwest corner; the router is in the basement center. Direct signal to the main SSID is marginal (-70 to -75 dBm), which causes intermittent dropouts and lost detections.
+
+**Setup:**
+- TP-Link RE105 range extender on first floor southwest side, broadcasting `beaumont_EXT`
+- Extender DHCP turned **off** (transparent bridging mode)
+- Pi connects to `beaumont_EXT` with static IP 192.168.50.42 (via NetworkManager `ipv4.method=manual`)
+- Original `beaumont` (NM connection name `preconfigured`) retained as autoconnect fallback
+- DHCP reservation on main router maps Pi MAC `2c:cf:67:28:d2:69` → `192.168.50.42` (used by the fallback path)
+
+**NetworkManager connections on the Pi:**
+```
+preconfigured   beaumont       autoconnect=yes priority=0  (DHCP — fallback)
+beaumont_EXT    beaumont_EXT   autoconnect=yes priority=10 (static .42)
+```
+
+**Signal monitoring** — cron logs WiFi signal every 5 min, self-trims to ~7 days:
+```bash
+*/5 * * * * echo "$(date +\%F\ \%T) $(/sbin/iwconfig wlan0 2>/dev/null | grep -o "Signal level=.*")" >> /home/lucas/wifi_signal.log; tail -2016 /home/lucas/wifi_signal.log > /home/lucas/wifi_signal.tmp && mv /home/lucas/wifi_signal.tmp /home/lucas/wifi_signal.log
+```
+
+Gaps in the log = WiFi was down. On `beaumont_EXT` signal should be around -50 dBm.
+
+## 7. Troubleshooting
+
+### No bird detections in HA
+
+Check what's actually broken in order:
+
+1. **Is `sensor.birdnet_latest_detection` `unavailable`?** Could be MQTT timeout (no recent detections) or BirdNET pipeline crashed.
+
+2. **Is the Pi reachable?** From the HA host or Mac:
+   ```bash
+   ping 192.168.50.42
+   ```
+   Timeout / "No route to host" = WiFi/network issue. Check signal log on the Pi.
+
+3. **Is the RTSP stream up on the Pi?**
+   ```bash
+   ssh lucas@birdmic 'systemctl is-active mediamtx birdmic'
+   ```
+   Both should be `active`.
+
+4. **Is BirdNET seeing audio?** Check `/tmp/StreamData/` in the BirdNET container:
+   ```bash
+   docker exec $(docker ps -qf name=birdnet) sh -c 'ls -la /tmp/StreamData/'
+   ```
+   Should see fresh `.wav` files with today's date. If only stale `.json`/`.txt` files, the stream isn't connecting.
+
+5. **Check BirdNET-Pi add-on logs** — Settings → Add-ons → BirdNET-Pi → Log. Look for `sox FAIL` errors or `Connection timed out` on the RTSP URL.
+
+### sox trim error — start position after stop position
+
+**Symptom:** Add-on log spams:
+```
+sox FAIL trim: Position 1 is behind the following position
+...trim, '=37.5', '=15'...
+```
+
+**Cause:** Bug in BirdNET-Pi `reporting.py` triggered by malformed audio files (typically from RTSP stream interruptions). The unhandled exception kills `birdnet_analysis` and stops MQTT publishing — even for *good* detections that come after.
+
+**Fix:** Clear the corrupted WAV files and restart:
+```bash
+# From HA Terminal add-on:
+docker ps | grep -i bird   # get container ID
+docker exec <id> sh -c 'rm -f /tmp/StreamData/*.wav'
+# Then restart BirdNET-Pi from HA UI
+```
+
+If the stream just dropped (single bad file), the queue will recover after that file is processed. If many days of stale files accumulated, clear them by date prefix:
+```bash
+docker exec <id> sh -c 'rm -f /tmp/StreamData/2026-05-01*.wav'
+```
+
+### WiFi dropping out
+
+Check signal log on the Pi (`cat ~/wifi_signal.log`). Gaps = WiFi was disconnected. If signal is consistently weaker than -70 dBm, the Pi's location is out of reliable range — move the extender closer or improve coverage.
+
+### Pi got the wrong IP
+
+The Pi should always be at .42, either via static IP on `beaumont_EXT` or via DHCP reservation on `beaumont`. If it ends up on a different IP:
+- Check which SSID it's on: `iwconfig wlan0 | grep ESSID`
+- Check NetworkManager connection: `nmcli connection show --active`
+- If on `beaumont_EXT` but not .42: static IP config got changed, re-apply with `nmcli connection modify`
+- If on `beaumont` but not .42: DHCP reservation on the router didn't apply, check router admin
+
+### NetworkManager picks the wrong network on boot
+
+Verify priorities:
+```bash
+nmcli -f connection.id,connection.autoconnect-priority connection show
+```
+`beaumont_EXT` should be priority 10, `preconfigured` priority 0. If `beaumont_EXT` consistently fails to come up (check `journalctl -u NetworkManager -b 0`), the fallback to `preconfigured` is expected behavior.
+

@@ -227,6 +227,21 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 - `mediamtx.service` - RTSP server
 - `birdmic.service` - ffmpeg audio capture stream
 
+### Pi Networking
+- Connects via TP-Link RE105 extender (`beaumont_EXT` SSID, extender DHCP off, transparent bridge)
+- Static IP `192.168.50.42` via NetworkManager on `beaumont_EXT` (method=manual)
+- Fallback: `preconfigured`/`beaumont` connection uses DHCP reservation (MAC `2c:cf:67:28:d2:69` → .42)
+- Signal log: `/home/lucas/wifi_signal.log` on the Pi (cron every 5 min, self-trims to ~7 days)
+- mDNS doesn't traverse the extender — use `birdmic` or `192.168.50.42`, not `birdmic.local`
+
+### Common Failure: sox trim error breaks MQTT
+If `sensor.birdnet_latest_detection` is `unavailable` and BirdNET-Pi logs show `sox FAIL trim: Position 1 is behind the following position`, the analysis queue is jammed on corrupted WAV files (typically from a stream interruption). Fix:
+```bash
+docker exec $(docker ps -qf name=birdnet) sh -c 'rm -f /tmp/StreamData/*.wav'
+# Then restart BirdNET-Pi add-on
+```
+See `bird-notifier.md` § Troubleshooting for full diagnostic flow.
+
 ### Rare Bird Alerts (`automation.rare_bird_tts_alert`)
 **Status:** Enabled
 
