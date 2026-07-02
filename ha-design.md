@@ -9,6 +9,7 @@ Design and implementation notes for a Wisconsin residential smart home running H
 - BirdNET - Birdsong detection via Pi Zero 2 W + ML analysis
 - Energy Monitoring - Sense power meter + SolarEdge solar
 - ESP32-S3-BOX-3B - Touchscreen display for status and controls
+- Tapo C660 - Battery camera with SD card recording, auto-synced to Synology NAS
 
 This document tracks current state, planned enhancements, and implementation details.
 
@@ -120,6 +121,18 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Toggle with `input_boolean.rare_bird_alerts_enabled`
 - [x] Minimum 70% confidence threshold to reduce false positives
 
+### Tapo C660 Camera
+- [x] Camera on main `beaumont` WiFi at 192.168.50.200 (MAC: 3C:78:95:47:6E:E6)
+- [x] Tapo Camera Control integration (HACS, JurajNyiri) — official TP-Link integration fails on newer firmware
+- [x] Media Sync enabled (24 hours, cold storage: `/media/tapo_control/`)
+- [x] `tapo_c660_sync_to_synology` automation — rsyncs cold storage to Synology on sync completion or every 4 hours
+- [x] SSH key from HA → Synology established for rsync
+
+### Synology NAS
+- [x] IP: 192.168.50.253, SSH on port 63211
+- [x] Camera recordings: `/volume2/photo/lucas_photo/tapo_c660/`
+- [x] SSH keys: Mac → Synology, HA → Synology
+
 ---
 
 ## Entity Reference
@@ -170,6 +183,16 @@ This document tracks current state, planned enhancements, and implementation det
 | `event.front_door_chime` | Nest Doorbell chime event (fires on button press) |
 | `media_player.kitchen_echo_dot` | Echo Dot for doorbell chime/announcement |
 
+### Tapo C660 Camera
+| Entity | Purpose |
+|--------|---------|
+| `camera.tapo_c660_hd_stream_direct` | Live camera feed |
+| `switch.tapo_c660_media_sync` | SD card → HA recording sync (keep ON) |
+| `sensor.tapo_c660_recordings_synchronization` | Sync status: Idle / Syncing |
+| `select.tapo_c660_motion_detection` | Motion detection sensitivity |
+| `select.tapo_c660_person_detection` | Person detection sensitivity |
+| `sensor.tapo_c660_battery` | Battery percentage |
+
 ---
 
 ## Future Ideas
@@ -184,10 +207,10 @@ This document tracks current state, planned enhancements, and implementation det
 |------|---------|
 | `/Volumes/config/esphome/esp32-s3-box-3-2e8818.yaml` | 6 pages, swipe nav, touch controls |
 | `/Volumes/config/template_sensors.yaml` | recent_birds_display, forecast_display |
-| `/Volumes/config/configuration.yaml` | SQL sensor for bird history, python_script integration |
+| `/Volumes/config/configuration.yaml` | SQL sensor for bird history, sync_tapo_to_synology shell_command |
 | `/Volumes/config/input_numbers.yaml` | hvac_hold_temp added |
 | `/Volumes/config/input_booleans.yaml` | rare_bird_alerts_enabled toggle |
-| `/Volumes/config/automations.yaml` | Hold system, rare bird TTS alert, septic alarm, doorbell chime |
+| `/Volumes/config/automations.yaml` | Hold system, rare bird TTS alert, septic alarm, doorbell chime, tapo sync |
 | `/Volumes/config/esphome/vibration-sensor.yaml` | ESP32 vibration sensor for septic alarm |
 | `/Volumes/config/dane_county_frequencies.json` | eBird frequency data (521 species, 48 weeks) |
 | `/Volumes/config/scripts/check_rare_bird.py` | Rare bird rarity check script |
@@ -200,6 +223,8 @@ This document tracks current state, planned enhancements, and implementation det
 |------|-------|
 | Pi hostname | birdmic (192.168.50.42) |
 | ESP32-S3-BOX-3B IP | 192.168.50.189 |
+| Tapo C660 IP | 192.168.50.200 |
+| Synology NAS IP | 192.168.50.253 |
 | HA timezone | America/Chicago |
 | Location | Sun Prairie, Wisconsin |
 | Display resolution | 320x240 (S3-BOX-3B) |

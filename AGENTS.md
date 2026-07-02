@@ -150,6 +150,15 @@ Sends critical mobile notification when vibration sensor detects septic pump ala
 - Critical alert (bypasses Do Not Disturb on iOS)
 - Mode: single (prevents spam during continuous alarm)
 
+### Tapo C660 Sync to Synology (`automation.tapo_c660_sync_to_synology`)
+**Status:** Enabled
+
+Rsyncs downloaded camera recordings from HA cold storage to Synology NAS.
+
+**Triggers:** `sensor.tapo_c660_recordings_synchronization` transitions Syncing → Idle, or every 4 hours as fallback
+
+**Action:** `shell_command.sync_tapo_to_synology` — rsyncs `/media/tapo_control/` → `/volume2/photo/lucas_photo/tapo_c660/` on Synology via SSH, removes source files after successful copy
+
 ### Doorbell Chime and Announcement (`automation.doorbell_chime_announcement`)
 **Status:** Enabled
 
@@ -168,6 +177,46 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 **Mode:** restart (interrupts in-progress announcements for new doorbell presses)
 
 **Note:** Nest enforces a cooldown period (~30-60 seconds) between doorbell events to prevent spam. Rapid successive presses won't trigger multiple announcements.
+
+## Tapo C660 Camera
+
+### Hardware
+- **IP:** 192.168.50.200, **MAC:** 3C:78:95:47:6E:E6
+- On main `beaumont` WiFi (not the RE105 extender — close enough to main router)
+- Battery powered (~81% at install), records 24/7 to SD card
+- Port 443 only open locally (RTSP/ONVIF disabled); use Tapo Camera Control integration
+
+### HA Integration
+- **Integration:** Tapo: Camera Control (HACS) by JurajNyiri — NOT the built-in TP-Link Smart Home
+- Official TP-Link integration fails with `try_connect_all` on newer Tapo camera firmware
+
+### Key Entities
+| Entity | Description |
+|--------|-------------|
+| `camera.tapo_c660_hd_stream_direct` | Live camera feed |
+| `switch.tapo_c660_media_sync` | Enables SD card → HA recording sync (keep ON) |
+| `sensor.tapo_c660_recordings_synchronization` | Sync status: Idle / Syncing |
+| `select.tapo_c660_motion_detection` | Motion detection sensitivity (high/normal/low/off) |
+| `select.tapo_c660_person_detection` | Person detection sensitivity |
+| `sensor.tapo_c660_battery` | Battery percentage |
+
+### Media Sync Setup
+- `switch.tapo_c660_media_sync` ON, sync_hours: 24
+- Hot storage: `/config/.storage/tapo_control/` (managed by integration)
+- Cold storage: `/media/tapo_control/` (staging before Synology)
+- Reconfigure via: Settings → Devices & Services → Tapo → ⋮ → Reconfigure → Configure media
+
+## Synology NAS
+
+- **IP:** 192.168.50.253, **MAC:** 00:11:32:FD:76:89
+- **SSH:** port 63211, key auth set up from Mac and HA
+- Camera recordings: `/volume2/photo/lucas_photo/tapo_c660/`
+
+### SSH Keys
+Keys established between all local systems (as of 2026-07):
+- Mac → birdmic (`~/.ssh/config` has shortcut: `ssh birdmic`)
+- Mac → Synology (`~/.ssh/config` has shortcut: `ssh synologynas`)
+- HA → Synology (key at `/root/.ssh/id_ed25519` on HA server)
 
 ## Day/Night Schedule
 - **Day:** 6am - 11pm (hour 6-22)
@@ -228,11 +277,17 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 - `birdmic.service` - ffmpeg audio capture stream
 
 ### Pi Networking
-- Connects via TP-Link RE105 extender (`beaumont_EXT` SSID, extender DHCP off, transparent bridge)
+- Connects via TP-Link RE105 extender (`beaumont_EXT` SSID) or fallback to main `beaumont` WiFi
 - Static IP `192.168.50.42` via NetworkManager on `beaumont_EXT` (method=manual)
 - Fallback: `preconfigured`/`beaumont` connection uses DHCP reservation (MAC `2c:cf:67:28:d2:69` → .42)
 - Signal log: `/home/lucas/wifi_signal.log` on the Pi (cron every 5 min, self-trims to ~7 days)
 - mDNS doesn't traverse the extender — use `birdmic` or `192.168.50.42`, not `birdmic.local`
+
+**RE105 extender notes:**
+- RE105 DHCP must stay ON — turning it off breaks DHCP clients (RE105 doesn't bridge DHCP requests when DHCP is disabled)
+- Static-IP devices (Pi) are bridged transparently; DHCP clients are NATted and invisible to main network
+- RE105 DHCP and main router DHCP both serve 192.168.50.x — avoid IP range conflicts by using DHCP reservations
+- If RE105 loses upstream connection, birdmic falls back to `beaumont` automatically (still reachable at .42)
 
 ### Common Failure: sox trim error breaks MQTT
 If `sensor.birdnet_latest_detection` is `unavailable` and BirdNET-Pi logs show `sox FAIL trim: Position 1 is behind the following position`, the analysis queue is jammed on corrupted WAV files (typically from a stream interruption). Fix:
