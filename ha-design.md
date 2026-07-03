@@ -122,7 +122,7 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Minimum 70% confidence threshold to reduce false positives
 
 ### Tapo C660 Camera
-- [x] Camera on main `beaumont` WiFi at 192.168.50.200 (MAC: 3C:78:95:47:6E:E6)
+- [x] Camera on main `beaumont` WiFi at 192.168.50.201 (MAC: 3C:78:95:47:6E:E6)
 - [x] Tapo Camera Control integration (HACS, JurajNyiri) — official TP-Link integration fails on newer firmware
 - [x] Media Sync enabled (24 hours, cold storage: `/media/tapo_control/`)
 - [x] `tapo_c660_sync_to_synology` automation — rsyncs cold storage to Synology on sync completion or every 4 hours
@@ -223,7 +223,7 @@ This document tracks current state, planned enhancements, and implementation det
 |------|-------|
 | Pi hostname | birdmic (192.168.50.42) |
 | ESP32-S3-BOX-3B IP | 192.168.50.189 |
-| Tapo C660 IP | 192.168.50.200 |
+| Tapo C660 IP | 192.168.50.201 |
 | Synology NAS IP | 192.168.50.253 |
 | HA timezone | America/Chicago |
 | Location | Sun Prairie, Wisconsin |

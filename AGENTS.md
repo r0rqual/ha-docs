@@ -181,7 +181,7 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 ## Tapo C660 Camera
 
 ### Hardware
-- **IP:** 192.168.50.200, **MAC:** 3C:78:95:47:6E:E6
+- **IP:** 192.168.50.201, **MAC:** 3C:78:95:47:6E:E6
 - On main `beaumont` WiFi (not the RE105 extender — close enough to main router)
 - Battery powered (~81% at install), records 24/7 to SD card
 - Port 443 only open locally (RTSP/ONVIF disabled); use Tapo Camera Control integration
