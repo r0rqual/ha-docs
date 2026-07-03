@@ -153,11 +153,11 @@ Sends critical mobile notification when vibration sensor detects septic pump ala
 ### Tapo C660 Sync to Synology (`automation.tapo_c660_sync_to_synology`)
 **Status:** Enabled
 
-Rsyncs downloaded camera recordings from HA cold storage to Synology NAS.
+Copies downloaded camera recordings from HA cold storage to Synology NAS.
 
-**Triggers:** `sensor.tapo_c660_recordings_synchronization` transitions Syncing → Idle, or every 4 hours as fallback
+**Triggers:** `sensor.tapo_c660_recordings_synchronization` transitions to Idle (from any downloading state), or every 4 hours as fallback
 
-**Action:** `shell_command.sync_tapo_to_synology` — rsyncs `/media/tapo_control/` → `/volume2/photo/lucas_photo/tapo_c660/` on Synology via SSH, removes source files after successful copy
+**Action:** `shell_command.sync_tapo_to_synology` — runs `/config/scripts/sync_tapo.sh`, which copies new files from `/media/tapo_control/` → `/volume2/photo/lucas_photo/tapo_c660/` on Synology via SSH. Uses `ssh+cat` (not rsync/scp — those aren't in the HA container). Skips files already on Synology. Integration manages cold storage cleanup (deletes after 24h).
 
 ### Doorbell Chime and Announcement (`automation.doorbell_chime_announcement`)
 **Status:** Enabled
@@ -195,16 +195,16 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 |--------|-------------|
 | `camera.tapo_c660_hd_stream_direct` | Live camera feed |
 | `switch.tapo_c660_media_sync` | Enables SD card → HA recording sync (keep ON) |
-| `sensor.tapo_c660_recordings_synchronization` | Sync status: Idle / Syncing |
+| `sensor.tapo_c660_recordings_synchronization` | Sync status: Idle or "Downloading YYYYMMDD (N / total): MB / total" |
 | `select.tapo_c660_motion_detection` | Motion detection sensitivity (high/normal/low/off) |
 | `select.tapo_c660_person_detection` | Person detection sensitivity |
 | `sensor.tapo_c660_battery` | Battery percentage |
 
 ### Media Sync Setup
 - `switch.tapo_c660_media_sync` ON, sync_hours: 24
-- Hot storage: `/config/.storage/tapo_control/` (managed by integration)
-- Cold storage: `/media/tapo_control/` (staging before Synology)
+- Cold storage: `/media/tapo_control/` (configured in integration; auto-cleaned after 24h)
 - Reconfigure via: Settings → Devices & Services → Tapo → ⋮ → Reconfigure → Configure media
+- **Note:** Integration caches the cold storage path at startup — restart the integration after changing it
 
 ## Synology NAS
 
@@ -216,7 +216,7 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 Keys established between all local systems (as of 2026-07):
 - Mac → birdmic (`~/.ssh/config` has shortcut: `ssh birdmic`)
 - Mac → Synology (`~/.ssh/config` has shortcut: `ssh synologynas`)
-- HA → Synology (key at `/root/.ssh/id_ed25519` on HA server)
+- HA → Synology (key at `/config/.ssh/id_ed25519` on HA server — `/config/` persists across reboots; `/root/.ssh/` does not)
 
 ## Day/Night Schedule
 - **Day:** 6am - 11pm (hour 6-22)

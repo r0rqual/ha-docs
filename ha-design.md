@@ -125,8 +125,9 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Camera on main `beaumont` WiFi at 192.168.50.201 (MAC: 3C:78:95:47:6E:E6)
 - [x] Tapo Camera Control integration (HACS, JurajNyiri) — official TP-Link integration fails on newer firmware
 - [x] Media Sync enabled (24 hours, cold storage: `/media/tapo_control/`)
-- [x] `tapo_c660_sync_to_synology` automation — rsyncs cold storage to Synology on sync completion or every 4 hours
-- [x] SSH key from HA → Synology established for rsync
+- [x] `tapo_c660_sync_to_synology` automation — copies new files from cold storage to Synology on sync completion or every 4 hours
+- [x] SSH key from HA → Synology at `/config/.ssh/id_ed25519` (persists across reboots)
+- [x] `/config/scripts/sync_tapo.sh` — uses ssh+cat to transfer (rsync/scp not available in HA container)
 
 ### Synology NAS
 - [x] IP: 192.168.50.253, SSH on port 63211
@@ -208,6 +209,7 @@ This document tracks current state, planned enhancements, and implementation det
 | `/Volumes/config/esphome/esp32-s3-box-3-2e8818.yaml` | 6 pages, swipe nav, touch controls |
 | `/Volumes/config/template_sensors.yaml` | recent_birds_display, forecast_display |
 | `/Volumes/config/configuration.yaml` | SQL sensor for bird history, sync_tapo_to_synology shell_command |
+| `/Volumes/config/scripts/sync_tapo.sh` | Tapo → Synology file transfer script (ssh+cat) |
 | `/Volumes/config/input_numbers.yaml` | hvac_hold_temp added |
 | `/Volumes/config/input_booleans.yaml` | rare_bird_alerts_enabled toggle |
 | `/Volumes/config/automations.yaml` | Hold system, rare bird TTS alert, septic alarm, doorbell chime, tapo sync |
