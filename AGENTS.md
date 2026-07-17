@@ -74,6 +74,7 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 | Entity | Purpose |
 |--------|---------|
 | `input_boolean.hvac_override_enabled` | Activates temperature hold |
+| `input_boolean.fan_manual_mode` | Disables automatic fan mode changes (keeps manual fan setting) |
 | `input_number.comfort_heating_day` | Day heating target (default 72°F) |
 | `input_number.comfort_heating_night` | Night heating target (default 70°F) |
 | `input_number.comfort_cooling_day` | Day cooling target (default 76°F) |
@@ -107,26 +108,32 @@ Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 
 **Fallback Behavior:** When all outdoor sensors fail, system maintains comfort targets like a basic thermostat - heats when indoor drops below heat target, cools when indoor rises above cool target.
 
-**Triggers:** Every 15 min, or when `sensor.smart_hvac_mode` changes
+**Triggers:** Every 15 min, when `sensor.smart_hvac_mode` changes, or when `input_boolean.hvac_override_enabled` turns off
 
 **Conditions:** Requires `input_boolean.hvac_override_enabled` = off
+
+**Fan mode:** Only changed on HVAC mode transitions; skipped entirely when `input_boolean.fan_manual_mode` = on
+
+**Shoulder→Cool threshold:** Activates at `indoor >= cool_target` (not `> cool_target + 1`)
 
 ### Temperature Hold System
 Two automations work together:
 
 **HVAC Hold Set Temperature** (`automation.hvac_hold_set_temperature`)
 - Triggers when hold activates OR hold temp is adjusted
-- Sets thermostat to `input_number.hvac_hold_temp`
+- If thermostat is in `off` mode, infers heat vs cool from hold temp vs indoor temp and sets the mode first
+- Sets thermostat setpoint to `input_number.hvac_hold_temp`
 
 **Resume HVAC After Override** (`automation.resume_hvac_after_override`)
 - Starts timer when hold activates OR duration is adjusted
 - Auto-clears hold after `input_number.hvac_override_duration` hours
 - Timer restarts if duration is changed while holding
+- Smart HVAC v2 resumes immediately when hold clears (not on next 15-min tick)
 
 ### Summer Night Fan Circulation (`automation.summer_night_fan_circulation`)
 **Status:** Enabled
 
-On cool summer nights (outdoor > 60°F) when HVAC is off for 30+ min, runs circulation fan for 1 hour to pull cool basement air up.
+On cool summer nights (outdoor > 60°F) when HVAC is off for 30+ min, runs circulation fan for 1 hour to pull cool basement air up. Skipped when `input_boolean.fan_manual_mode` = on.
 
 ### ERV Control (RenewAire)
 **Setup:** Central ERV controlled by smart outlet (`switch.renewaire`). Bathroom wall switches also control it but are wired through the smart outlet.
@@ -183,7 +190,7 @@ Plays loud doorbell chime and announces when Nest doorbell is pressed.
 ### Hardware
 - **IP:** 192.168.50.201, **MAC:** 3C:78:95:47:6E:E6
 - On main `beaumont` WiFi (not the RE105 extender — close enough to main router)
-- Battery powered (~81% at install), records 24/7 to SD card
+- Battery powered (~81% at install), records to SD card on motion detection
 - Port 443 only open locally (RTSP/ONVIF disabled); use Tapo Camera Control integration
 
 ### HA Integration
