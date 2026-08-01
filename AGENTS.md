@@ -48,17 +48,26 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 ## Key Entities
 
 ### Climate
-- `climate.t6_pro_z_wave_programmable_thermostat` - Main thermostat (Honeywell T6 Pro Z-Wave)
-  - Supports modes: heat, cool, auto, off
-  - Fan modes: Auto low, Low, Circulation
+- `climate.elite_pro_s1200_smart_thermostat` - Main thermostat (Resideo Honeywell ElitePRO S1200, heat pump / dual-fuel)
+  - Supported modes over Matter: off, heat, cool — single setpoint, 50-90°F (`supported_features: 385`)
+  - **No fan control, humidity, or IAQ over Matter** — those stay in the Resideo/First Alert app
+  - Dual-fuel heat-pump/furnace switchover runs on-device (outdoor-temp based); HA only sets mode + setpoint
+- `climate.t6_pro_z_wave_programmable_thermostat` - Retired Honeywell T6 Pro (Z-Wave), now battery-powered as a standalone **indoor humidity sensor** only (see Sensors)
+
+**Matter integration (S1200):**
+- Via the **Matter** integration + **Matter Server** add-on; multi-admin (stays in the Resideo/First Alert app simultaneously)
+- To (re)commission: HA companion app → Settings → Devices & Services → Matter → Add device → pick **"already connected device"** (multi-admin path), open the First Alert app's **Matter** menu, then scan/enter the fresh code shown on the **thermostat screen** (not the factory/box code). Needs Bluetooth + phone near the thermostat.
+- Commissioning finishes over the LAN via mDNS — if the phone hangs after the thermostat says "paired," force-quit the app and re-check; the device usually landed. Ensure the thermostat and HA server share the same subnet.
+- Entities: `climate.elite_pro_s1200_smart_thermostat`, `sensor.elite_pro_s1200_smart_thermostat_temperature`, `select.elite_pro_s1200_smart_thermostat_temperature_display_mode` (+ disabled-by-default diagnostics: reboot count, uptime)
 
 ### Sensors
 | Entity | Description |
 |--------|-------------|
 | `sensor.indoor_outdoor_meter_6a87_temperature` | Outdoor temperature (primary, reliable) |
 | `sensor.indoor_outdoor_meter_6a87_humidity` | Outdoor humidity |
-| `sensor.t6_pro_z_wave_programmable_thermostat_air_temperature` | Indoor temperature |
-| `sensor.t6_pro_z_wave_programmable_thermostat_humidity` | Indoor humidity |
+| `sensor.elite_pro_s1200_smart_thermostat_temperature` | Indoor temperature (S1200, Matter) |
+| `sensor.t6_pro_z_wave_programmable_thermostat_humidity` | Indoor humidity — retired T6 on batteries (sole humidity source; place in representative living space) |
+| `sensor.t6_pro_z_wave_programmable_thermostat_battery_level` | T6 battery % (comfort-critical — see health alert) |
 
 ### Smart HVAC v2 Template Sensors
 | Entity | Description |
@@ -74,7 +83,7 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 | Entity | Purpose |
 |--------|---------|
 | `input_boolean.hvac_override_enabled` | Activates temperature hold |
-| `input_boolean.fan_manual_mode` | Disables automatic fan mode changes (keeps manual fan setting) |
+| `input_boolean.fan_manual_mode` | **Inert** — S1200 has no fan control over Matter; no longer referenced (safe to delete) |
 | `input_number.comfort_heating_day` | Day heating target (default 72°F) |
 | `input_number.comfort_heating_night` | Night heating target (default 70°F) |
 | `input_number.comfort_cooling_day` | Day cooling target (default 76°F) |
@@ -112,7 +121,7 @@ Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 
 **Conditions:** Requires `input_boolean.hvac_override_enabled` = off
 
-**Fan mode:** Only changed on HVAC mode transitions; skipped entirely when `input_boolean.fan_manual_mode` = on
+**Fan mode:** N/A — S1200 exposes no fan control over Matter; automation sets mode + setpoint only (fan stays on the thermostat's Auto, per installer recommendation)
 
 **Shoulder→Cool threshold:** Activates at `indoor >= cool_target` (not `> cool_target + 1`)
 
@@ -130,10 +139,17 @@ Two automations work together:
 - Timer restarts if duration is changed while holding
 - Smart HVAC v2 resumes immediately when hold clears (not on next 15-min tick)
 
-### Summer Night Fan Circulation (`automation.summer_night_fan_circulation`)
+### T6 Humidity Sensor Health Alert (`automation.t6_humidity_sensor_health_alert`)
 **Status:** Enabled
 
-On cool summer nights (outdoor > 60°F) when HVAC is off for 30+ min, runs circulation fan for 1 hour to pull cool basement air up. Skipped when `input_boolean.fan_manual_mode` = on.
+The retired T6 (now on batteries) is the sole humidity source feeding the Smart HVAC comfort offsets. Alerts Lucas's iPhone if it degrades:
+- Device low-battery flag turns on
+- Battery drops below 10% (urgent lower fallback; the generic low-battery blueprint gives the first heads-up at 20%)
+- Humidity stops reporting for 2h+ (dead battery / Z-Wave dropout / out of range)
+
+When humidity is unavailable, the comfort offsets fall back to a 40% RH default — HVAC still heats/cools normally, just without humidity tuning.
+
+**Note:** Summer Night Fan Circulation was removed in the S1200 migration (no fan control over Matter).
 
 ### ERV Control (RenewAire)
 **Setup:** Central ERV controlled by smart outlet (`switch.renewaire`). Bathroom wall switches also control it but are wired through the smart outlet.
@@ -340,7 +356,7 @@ Use MCP: `mcp__home-assistant__GetLiveContext`
 Or via API:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
-  "http://homeassistant:8123/api/states" | jq '[.[] | select(.entity_id | test("smart_hvac|smart_heating|smart_cooling|indoor_outdoor_meter|t6_pro.*temperature|t6_pro.*humidity"))]'
+  "http://homeassistant:8123/api/states" | jq '[.[] | select(.entity_id | test("smart_hvac|smart_heating|smart_cooling|indoor_outdoor_meter|elite_pro_s1200|t6_pro.*humidity"))]'
 ```
 
 ### Enable Smart HVAC v2 for testing

@@ -37,8 +37,8 @@ This document tracks current state, planned enhancements, and implementation det
         ┌────────────────────┼────────────────────┐
         ▼                    ▼                    ▼
 ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│ Honeywell T6  │   │ ESP32-S3-BOX  │   │ Pi Zero 2 W   │
-│ Z-Wave Therm  │   │ Touchscreen   │   │ Bird Mic      │
+│ ElitePRO S1200│   │ ESP32-S3-BOX  │   │ Pi Zero 2 W   │
+│ Matter Therm  │   │ Touchscreen   │   │ Bird Mic      │
 └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
@@ -50,12 +50,14 @@ This document tracks current state, planned enhancements, and implementation det
 - [x] Core automation with outdoor temp-based mode selection
 - [x] Hysteresis to prevent mode thrashing (heat exits at 58°F or indoor > cool target; cool exits at 69°F or indoor < heat target)
 - [x] Day/night comfort targets via input_number helpers
-- [x] Humidity-aware target adjustments (+1°F heat if dry, -1.5 to -2.5°F cool if humid)
+- [x] Humidity-aware target adjustments (+1°F heat if dry, -1.5 to -2.5°F cool if humid) — humidity from the retired T6 (battery, standalone)
 - [x] Forecast-based preconditioning (precool morning if hot afternoon, skip-heat if warming)
 - [x] Multi-level outdoor temp fallback (local sensor → NWS → indoor-based default)
 - [x] Override system with auto-clear timer
-- [x] Summer night fan circulation automation
+- [x] T6 humidity-sensor health alert (low-battery / offline monitoring)
 - [x] ERV control based on outdoor conditions
+
+**Thermostat:** Resideo ElitePRO S1200 heat pump via Matter (replaced the Honeywell T6 Z-Wave). No fan control over Matter — fan-transition logic and Summer Night Fan Circulation were removed; fan stays on Auto. Dual-fuel switchover is handled on-device. The T6 now runs on batteries as the standalone indoor humidity source.
 
 **Status:** Enabled and running
 
