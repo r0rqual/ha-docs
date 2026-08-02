@@ -49,6 +49,7 @@ This document tracks current state, planned enhancements, and implementation det
 ### Smart HVAC v2
 - [x] Core automation with outdoor temp-based mode selection
 - [x] Hysteresis to prevent mode thrashing (heat exits at 58°F or indoor > cool target; cool exits at 69°F or indoor < heat target)
+- [x] Summer heat suppression — on warm days (forecast high ≥ 78°F, or Jun–Sep fallback) heat only runs below a 66°F comfort floor, so a cool summer morning won't fire the furnace
 - [x] Day/night comfort targets via input_number helpers
 - [x] Humidity-aware target adjustments (+1°F heat if dry, -1.5 to -2.5°F cool if humid) — humidity from the retired T6 (battery, standalone)
 - [x] Forecast-based preconditioning (precool morning if hot afternoon, skip-heat if warming)
@@ -157,8 +158,8 @@ This document tracks current state, planned enhancements, and implementation det
 | Entity | Purpose |
 |--------|---------|
 | `weather.kmsn` | NWS weather entity |
-| `sensor.forecast_high_today` | Template: today's high |
-| `sensor.forecast_low_today` | Template: today's low |
+| `sensor.forecast_high_today` | Trigger-based: today's high via `weather.get_forecasts` (twice_daily, first daytime period) |
+| `sensor.forecast_low_today` | Trigger-based: today's low via `weather.get_forecasts` (twice_daily, first nighttime period) |
 | `sensor.forecast_display` | Trigger-based: 3-day forecast via `weather.get_forecasts` service |
 
 **Note:** HA 2023.12+ removed forecast attribute from weather entities. Must use `weather.get_forecasts` service via trigger-based template sensors.

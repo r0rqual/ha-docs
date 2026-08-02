@@ -76,8 +76,8 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 | `sensor.smart_cooling_target` | Cool target from input_numbers, adjusted down for high humidity |
 | `sensor.smart_hvac_mode` | Desired mode with hysteresis and preconditioning logic |
 | `sensor.outdoor_temp_fallback` | Outdoor temp: local sensor → NWS → 65°F default |
-| `sensor.forecast_high_today` | Today's forecast high from NWS |
-| `sensor.forecast_low_today` | Today's forecast low from NWS |
+| `sensor.forecast_high_today` | Today's forecast high (trigger-based via `weather.get_forecasts`, twice_daily) |
+| `sensor.forecast_low_today` | Today's forecast low (trigger-based via `weather.get_forecasts`, twice_daily) |
 
 ### Input Helpers
 | Entity | Purpose |
@@ -102,6 +102,8 @@ Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 - Outdoor < 55°F → HEAT mode (exits at 58°F, or sooner if indoor exceeds cool target)
 - Outdoor > 72°F → COOL mode (exits at 69°F, or sooner if indoor drops below heat target)
 - 55-72°F (Shoulder) → Heat/cool based on indoor temp, or OFF if comfortable
+
+**Summer heat suppression:** On warm days (forecast high ≥ 78°F, or fallback to calendar months Jun–Sep) all heat branches are gated by `allow_heat` — heat only runs if the house drops to the hard comfort floor (`summer_heat_floor`, 66°F). Prevents the furnace firing on a cool summer morning/night just because indoor dipped a degree below the heat target. Tunables live in the `smart_hvac_mode` template (`summer_heat_floor`, month range).
 
 **Preconditioning (uses NWS forecast):**
 - **Precool:** Morning (6-10am) + outdoor < 65°F + forecast high > 80°F → cool to target-2°F
