@@ -49,7 +49,7 @@ This document tracks current state, planned enhancements, and implementation det
 ### Smart HVAC v2
 - [x] Core automation with outdoor temp-based mode selection
 - [x] Hysteresis to prevent mode thrashing (heat exits at 58°F or indoor > cool target; cool exits at 69°F or indoor < heat target)
-- [x] Summer heat suppression — on warm days (forecast high ≥ 78°F, or Jun–Sep fallback) heat only runs below a 66°F comfort floor, so a cool summer morning won't fire the furnace
+- [x] Season-based mode riding — summer rides in COOL (drifts freely on cold snaps, heats only below 62°F floor), winter rides in HEAT (cools only above 80°F ceiling), shoulder picks direction-or-OFF. Avoids toggling the whole system off/on, which is hard on a heat pump
 - [x] Day/night comfort targets via input_number helpers
 - [x] Humidity-aware target adjustments (+1°F heat if dry, -1.5 to -2.5°F cool if humid) — humidity from the retired T6 (battery, standalone)
 - [x] Forecast-based preconditioning (precool morning if hot afternoon, skip-heat if warming)

@@ -98,12 +98,16 @@ Settings → Developer Tools → YAML → Reload (select appropriate category)
 
 Intelligent HVAC control with hysteresis, preconditioning, and sensor fallbacks.
 
-**Core Logic:**
-- Outdoor < 55°F → HEAT mode (exits at 58°F, or sooner if indoor exceeds cool target)
-- Outdoor > 72°F → COOL mode (exits at 69°F, or sooner if indoor drops below heat target)
-- 55-72°F (Shoulder) → Heat/cool based on indoor temp, or OFF if comfortable
+**Core Logic (season-based):** `sensor.smart_hvac_mode` classifies the season and rides in **one** mode per season, letting the S1200 idle on its own compressor cycling instead of toggling the whole system off/on (which is hard on a heat pump). Only the ambiguous shoulder season falls back to pick-a-direction-or-OFF.
 
-**Summer heat suppression:** On warm days (forecast high ≥ 78°F, or fallback to calendar months Jun–Sep) all heat branches are gated by `allow_heat` — heat only runs if the house drops to the hard comfort floor (`summer_heat_floor`, 66°F). Prevents the furnace firing on a cool summer morning/night just because indoor dipped a degree below the heat target. Tunables live in the `smart_hvac_mode` template (`summer_heat_floor`, month range).
+- **Summer** (forecast high ≥ 78°F, or months Jun–Sep) → ride in **COOL**: cool when warm, idle otherwise, **drift freely during cold snaps**; only heat if indoor drops below `summer_heat_floor` (62°F).
+- **Winter** (forecast high ≤ 45°F, or months Nov–Mar) → mirror image: ride in **HEAT**; only cool if indoor rises above `winter_cool_ceiling` (80°F).
+- **Shoulder** (spring/fall, mild days in Apr/May/Oct) → pick heat/cool only when uncomfortable, else OFF. Uses the outdoor/indoor thresholds below with hysteresis:
+  - Outdoor < 55°F → HEAT (exits at 58°F, or sooner if indoor exceeds cool target)
+  - Outdoor > 72°F → COOL (exits at 69°F, or sooner if indoor drops below heat target)
+  - 55–72°F → heat/cool based on indoor temp, or OFF if comfortable
+
+Season is driven by calendar month (dependable) refined by `forecast_high` at the edges (a hot day in May reads as summer; a cold snap in Oct as winter). Tunables live in the `smart_hvac_mode` template: month ranges, `summer_heat_floor`, `winter_cool_ceiling`.
 
 **Preconditioning (uses NWS forecast):**
 - **Precool:** Morning (6-10am) + outdoor < 65°F + forecast high > 80°F → cool to target-2°F
@@ -244,8 +248,8 @@ Keys established between all local systems (as of 2026-07):
 - HA → Synology (key at `/config/.ssh/id_ed25519` on HA server — `/config/` persists across reboots; `/root/.ssh/` does not)
 
 ## Day/Night Schedule
-- **Day:** 6am - 11pm (hour 6-22)
-- **Night:** 11pm - 6am (hour 23-5)
+- **Day:** 6am - 9pm (hour 6-20)
+- **Night:** 9pm - 6am (hour 21-5)
 
 ## BirdNET Bird Detection
 
