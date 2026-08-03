@@ -123,9 +123,11 @@ Season is driven by calendar month (dependable) refined by `forecast_high` at th
 
 **Fallback Behavior:** When all outdoor sensors fail, system maintains comfort targets like a basic thermostat - heats when indoor drops below heat target, cools when indoor rises above cool target.
 
-**Triggers:** Every 15 min, when `sensor.smart_hvac_mode` changes, or when `input_boolean.hvac_override_enabled` turns off
+**Triggers:** `heartbeat` (every 15 min), `mode_change` (`sensor.smart_hvac_mode`), `target_change` (`sensor.smart_heating_target` / `sensor.smart_cooling_target`), `override_off` (`input_boolean.hvac_override_enabled` → off)
 
 **Conditions:** Requires `input_boolean.hvac_override_enabled` = off
+
+**Setpoint write policy (demand-response friendly):** The heartbeat re-affirms the *mode* every 15 min but only (re)writes the *setpoint* on a genuine change — `target_change`, `mode_change`, `override_off`, or a mode transition (`not on_heartbeat or current_hvac != <mode>`). This stops HA clobbering an externally-set setpoint every tick, so a utility demand-response event (Alliant **Smart Hours**, which raises the setpoint via the Resideo cloud) sticks instead of being fought. Day/night setback now also applies immediately (via `target_change`) rather than lagging up to 15 min. Residual: a `target_change` landing mid-event (e.g., the 9 PM setback, or a humidity threshold cross) writes once and can clip that event — rare, since events seldom run past ~8 PM. For airtight event handling, add an explicit DR-pause boolean driven off Alliant's advance notification.
 
 **Fan mode:** N/A — S1200 exposes no fan control over Matter; automation sets mode + setpoint only (fan stays on the thermostat's Auto, per installer recommendation)
 
